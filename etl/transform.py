@@ -1,5 +1,10 @@
 from pathlib import Path
 from typing import Dict
+import hashlib
+
+def generate_team_hash(names: list) -> str:
+    canonical = sorted([n.lower().strip() for n in names])
+    return hashlib.md5(",".join(canonical).encode()).hexdigest()
 
 def parse_log(file_path: str) -> Dict:
     """Parse a raw Showdown .log file into a structured dictionary."""
@@ -11,8 +16,10 @@ def parse_log(file_path: str) -> Dict:
         "loser": None,
         "players": {},
         "teams": {"p1": [], "p2": []},
+        "movesets": {"p1": {}, "p2": {}},  # add this
         "actions": []
     }
+    active_pokemon = {"p1": None, "p2": None}
 
     current_turn = 0
 
@@ -31,10 +38,10 @@ def parse_log(file_path: str) -> Dict:
                 battle["format"] = parts[2]
 
             elif tag == "player":
-                # |player|p1|ethanolli1|avatar|elo
-                pid = parts[2]      # p1 or p2
-                name = parts[3]
-                battle["players"][pid] = name
+                pid = parts[2]
+                name = parts[3] if len(parts) > 3 else ""
+                if name:  # only store if name is not empty
+                    battle["players"][pid] = name
 
             # --- Team composition ---
             elif tag == "poke":
@@ -49,10 +56,10 @@ def parse_log(file_path: str) -> Dict:
 
             # --- Switches ---
             elif tag == "switch":
-                # |switch|p1a: Landorus|Landorus-Therian, M, shiny|100/100
-                actor_raw = parts[2]   # e.g. "p1a: Landorus"
-                pid = actor_raw[:2]    # "p1"
+                actor_raw = parts[2]
+                pid = actor_raw[:2]
                 pokemon = parts[3].split(",")[0].strip()
+                active_pokemon[pid] = pokemon  # track who is active
                 battle["actions"].append({
                     "turn": current_turn,
                     "type": "switch",
@@ -62,16 +69,25 @@ def parse_log(file_path: str) -> Dict:
 
             # --- Moves ---
             elif tag == "move":
-                # |move|p1a: Landorus|U-turn|p2a: bird1
                 actor_raw = parts[2]
                 pid = actor_raw[:2]
                 move = parts[3]
                 target_raw = parts[4] if len(parts) > 4 else ""
                 target_pid = target_raw[:2] if target_raw else ""
+                
+                pokemon = active_pokemon[pid]
+                
+                if pokemon:
+                    if pokemon not in battle["movesets"][pid]:
+                        battle["movesets"][pid][pokemon] = {"moves": [], "tera_type": None}
+                    if move not in battle["movesets"][pid][pokemon]["moves"]:
+                        battle["movesets"][pid][pokemon]["moves"].append(move)
+                
                 battle["actions"].append({
                     "turn": current_turn,
                     "type": "move",
                     "player": pid,
+                    "pokemon": pokemon,
                     "move": move,
                     "target_player": target_pid
                 })
@@ -88,6 +104,21 @@ def parse_log(file_path: str) -> Dict:
                     "player": pid,
                     "hp_remaining": hp
                 })
+            
+            elif tag == "-terastallize":
+                pid = parts[2][:2]
+                tera_type = parts[3]
+                pokemon = active_pokemon[pid]
+                if pokemon and pid in battle["movesets"]:
+                    if pokemon not in battle["movesets"][pid]:
+                        battle["movesets"][pid][pokemon] = {"moves": [], "tera_type": None}
+                    battle["movesets"][pid][pokemon]["tera_type"] = tera_type
+                battle["actions"].append({
+                    "turn": current_turn,
+                    "type": "terastallize",
+                    "player": pid,
+                    "tera_type": tera_type
+                })
 
             # --- Winner ---
             elif tag == "win":
@@ -98,6 +129,24 @@ def parse_log(file_path: str) -> Dict:
         if name != battle["winner"]:
             battle["loser"] = name
 
+    # Generate team hashes
+    battle["team_hashes"] = {
+        "p1": generate_team_hash(battle["teams"]["p1"]),
+        "p2": generate_team_hash(battle["teams"]["p2"])
+    }
+
+    # Resolve which pid won
+    for pid, name in battle["players"].items():
+        if name == battle["winner"]:
+            battle["winner_pid"] = pid
+            break
+    else:
+        print(f"NO MATCH — players: {battle['players']}, winner: '{battle['winner']}'")
+
+    # Remove names from output
+    del battle["players"]
+    del battle["winner"]
+    del battle["loser"]
     return battle
 
 
