@@ -1,3 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
 venv/
+
+# Environment/config
 config.py
+.env
+
+# Raw replay logs
 raw_logs/
+
+# Generated datasets
+*.csv
+*.json
+
+# Analytics outputs
+outputs/
+exports/
+reports/
+
+# Database dumps
+*.sql.gz
+*.dump
+
+# OS/editor junk
+.DS_Store
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/

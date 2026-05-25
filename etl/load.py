@@ -33,13 +33,14 @@ def load_teams(battle: dict, battle_id: int, cursor):
         for pokemon_name in pokemon_list:
             moveset = movesets.get(pid, {}).get(pokemon_name, {})
             tera_type = moveset.get("tera_type")
+            item = moveset.get("item")
             moves = moveset.get("moves", [])
 
             cursor.execute("""
-                INSERT INTO pokemon (team_id, name, tera_type)
-                VALUES (%s, %s, %s)
+                INSERT INTO pokemon (team_id, name, tera_type, item)
+                VALUES (%s, %s, %s, %s)
                 RETURNING pokemon_id;
-            """, (team_id, pokemon_name, tera_type))
+            """, (team_id, pokemon_name, tera_type, item))
             pokemon_id = cursor.fetchone()[0]
 
             for slot, move_name in enumerate(moves, start=1):
@@ -47,6 +48,7 @@ def load_teams(battle: dict, battle_id: int, cursor):
                     INSERT INTO moves (pokemon_id, name, move_slot)
                     VALUES (%s, %s, %s);
                 """, (pokemon_id, move_name, slot))
+                
 
         cursor.execute("""
             INSERT INTO team_compositions (team_hash, format, first_seen, times_seen, win_count)

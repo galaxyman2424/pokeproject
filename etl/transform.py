@@ -79,7 +79,7 @@ def parse_log(file_path: str) -> Dict:
                 
                 if pokemon:
                     if pokemon not in battle["movesets"][pid]:
-                        battle["movesets"][pid][pokemon] = {"moves": [], "tera_type": None}
+                        battle["movesets"][pid][pokemon] = {"moves": [], "tera_type": None, "item": None}
                     if move not in battle["movesets"][pid][pokemon]["moves"]:
                         battle["movesets"][pid][pokemon]["moves"].append(move)
                 
@@ -111,7 +111,7 @@ def parse_log(file_path: str) -> Dict:
                 pokemon = active_pokemon[pid]
                 if pokemon and pid in battle["movesets"]:
                     if pokemon not in battle["movesets"][pid]:
-                        battle["movesets"][pid][pokemon] = {"moves": [], "tera_type": None}
+                        battle["movesets"][pid][pokemon] = {"moves": [], "tera_type": None, "item": None}
                     battle["movesets"][pid][pokemon]["tera_type"] = tera_type
                 battle["actions"].append({
                     "turn": current_turn,
@@ -119,6 +119,17 @@ def parse_log(file_path: str) -> Dict:
                     "player": pid,
                     "tera_type": tera_type
                 })
+
+            elif tag == "-item":
+                # |-item|p1a: Pokémon|Item Name|
+                actor_raw = parts[2]
+                pid = actor_raw[:2]
+                item_name = parts[3] if len(parts) > 3 else None
+                pokemon = active_pokemon[pid]
+                if pokemon and item_name:
+                    if pokemon not in battle["movesets"][pid]:
+                        battle["movesets"][pid][pokemon] = {"moves": [], "tera_type": None, "item": None}
+                    battle["movesets"][pid][pokemon]["item"] = item_name
 
             # --- Winner ---
             elif tag == "win":
