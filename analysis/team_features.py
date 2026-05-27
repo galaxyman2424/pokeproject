@@ -140,7 +140,6 @@ def compute_team_vector(team_id: int, team_data: dict) -> dict:
 
     return vector
 
-
 def main():
     conn = get_connection()
     teams = fetch_teams_with_moves(conn)
@@ -174,6 +173,7 @@ def main():
     print(corr.head(5).to_string())
     print("...")
     print(corr.tail(5).to_string())
+
 
 
 if __name__ == "__main__":

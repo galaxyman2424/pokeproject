@@ -32,5 +32,14 @@ reports/
 .vscode/
 .idea/
 
-# Jupyter
-.ipynb_checkpoints/
+# Node / TypeScript artifacts
+*.ts
+*.js
+*.mjs
+*.mts
+*.map
+
+# Node modules
+data/node_modules/
+
+data/
