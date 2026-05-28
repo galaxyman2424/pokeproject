@@ -4,7 +4,7 @@ from etl.load import load_all as load
 
 if __name__ == "__main__":
     print("=== Step 1: Extracting replays ===")
-    extract(format="gen9ou", pages=3)
+    extract(format="gen9ou", pages=60)
 
     print("\n=== Step 2: Transforming logs ===")
     battles = transform()

@@ -31,11 +31,13 @@ for (const defending of allTypes) {
 fs.writeFileSync(path.join(__dirname, 'typechart.json'), JSON.stringify(typechart, null, 2));
 console.log('Wrote typechart.json');
 
-// Sanity checks
-console.log('\nSanity checks:');
-console.log('Fire -> Steel (expect 0.5):', typechart['Steel']['Fire']);
-console.log('Water -> Fire (expect 2.0):', typechart['Fire']['Water']);
-console.log('Normal -> Ghost (expect 0.0):', typechart['Ghost']['Normal']);
-console.log('Electric -> Ground (expect 0.0):', typechart['Ground']['Electric']);
-console.log('Ice -> Dragon (expect 2.0):', typechart['Dragon']['Ice']);
-console.log('Fighting -> Bug (expect 0.5):', typechart['Bug']['Fighting']);
+// OU Pool — all species legal in Gen 9 OU or below (excluding Ubers/AG)
+const EXCLUDED_TIERS = new Set(['Uber', 'AG', 'Illegal', 'CAP', 'CAP NFE', 'CAP LC']);
+const ouPool = [];
+for (const species of Dex.species.all()) {
+    if (!EXCLUDED_TIERS.has(species.tier) && species.tier !== '') {
+        ouPool.push(species.name);
+    }
+}
+fs.writeFileSync(path.join(__dirname, 'ou_pool.json'), JSON.stringify(ouPool, null, 2));
+console.log(`Wrote ou_pool.json — ${ouPool.length} species`);
