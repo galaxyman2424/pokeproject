@@ -37,23 +37,19 @@ class ShowdownClient:
         self.websocket = await websockets.connect(SHOWDOWN_URL)
         print(f"[client] Connected to {SHOWDOWN_URL}")
 
-        # The server sends a challstr immediately after connection.
-        # In --no-security mode we can log in with any username and an empty
-        # password using the /trn command.
-        raw = await self.websocket.recv()
-        lines = self._parse_message(raw)
-        challstr = ""
-        for room, tag, rest in lines:
-            if tag == "challstr":
-                challstr = rest
+        # Drain messages until we get challstr
+        while True:
+            raw = await self.websocket.recv()
+            lines = self._parse_message(raw)
+            got_challstr = any(tag == "challstr" for _, tag, _ in lines)
+            if got_challstr:
                 break
 
-        # /trn <username>,<avatar>,<assertion>
-        # In no-security mode the assertion can be empty.
+        # Send login and give server time to process it
         await self.send_global(f"/trn {self.username},0,")
-        print(f"[client] Logged in as {self.username}")
+        await asyncio.sleep(1.0)
 
-        # Start background receive loop
+        print(f"[client] Logged in as {self.username}")
         self._recv_task = asyncio.create_task(self._recv_loop())
 
     async def disconnect(self):
@@ -95,6 +91,7 @@ class ShowdownClient:
         """Background task — receive messages and dispatch to room handlers."""
         try:
             async for raw in self.websocket:
+                print(f"[debug] RAW: {repr(raw[:200])}")
                 lines = self._parse_message(raw)
                 # Group lines by room
                 by_room = {}
@@ -102,12 +99,18 @@ class ShowdownClient:
                     by_room.setdefault(room, []).append((tag, rest))
 
                 for room, room_lines in by_room.items():
+                    # Call specific room handler if registered
                     if room in self.room_handlers:
                         await self.room_handlers[room](room, room_lines)
+                    # Always call wildcard handler ("*") for every room's messages
+                    # Used by the runner to catch battle room init before registering
+                    if "*" in self.room_handlers:
+                        await self.room_handlers["*"](room, room_lines)
         except asyncio.CancelledError:
             pass
         except websockets.exceptions.ConnectionClosed:
             print("[client] Connection closed")
+        
 
     def register_handler(self, room_id: str, handler):
         """Register an async handler for a specific battle room."""
