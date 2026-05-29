@@ -61,22 +61,18 @@ def load_ou_pool() -> list[str]:
 
 
 def load_viability_scores() -> dict[str, float]:
-    """
-    Load Pokémon usage % from pokemon_usage.csv and normalize to 0.0–1.0.
-    The most-used Pokémon gets 1.0. Any Pokémon not in the dataset gets 0.0.
-    """
+    import pandas as pd
     path = OUTPUT_DIR / "pokemon_usage.csv"
     if not path.exists():
         print("[viability] pokemon_usage.csv not found — viability penalty disabled.")
         return {}
-
-    import pandas as pd
     df = pd.read_csv(path)
+    # Use square root normalization — softens the gap between top and fringe Pokémon
     max_usage = df["usage_pct"].max()
     scores = {}
     for _, row in df.iterrows():
-        scores[row["name"]] = round(float(row["usage_pct"]) / float(max_usage), 4)
-
+        raw = float(row["usage_pct"]) / float(max_usage)
+        scores[row["name"]] = round(raw ** 0.5, 4)
     print(f"[viability] Loaded usage scores for {len(scores)} Pokémon. Max usage: {max_usage:.2f}%")
     return scores
 
@@ -160,12 +156,15 @@ def simulation_score(team: list[str], meta_teams: list[list[str]], n_battles: in
 
 
 def viability_multiplier(team: list[str], viability_scores: dict) -> float:
-    """
-    Minimum viability score across all 6 team members.
-    Any Pokémon not in the dataset at all returns 0.0, killing the team's fitness.
-    """
-    scores = [viability_scores.get(p, 0.0) for p in team]
-    return round(min(scores), 4)
+    scores = []
+    for p in team:
+        if p in viability_scores:
+            scores.append(viability_scores[p])
+        else:
+            scores.append(0.1)
+    avg     = sum(scores) / len(scores)
+    minimum = min(scores)
+    return round(0.7 * avg + 0.3 * minimum, 4)
 
 
 def fitness(

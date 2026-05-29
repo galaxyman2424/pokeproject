@@ -35,9 +35,12 @@ console.log('Wrote typechart.json');
 const EXCLUDED_TIERS = new Set(['Uber', 'AG', 'Illegal', 'CAP', 'CAP NFE', 'CAP LC']);
 const ouPool = [];
 for (const species of Dex.species.all()) {
-    if (!EXCLUDED_TIERS.has(species.tier) && species.tier !== '') {
-        ouPool.push(species.name);
-    }
+    if (EXCLUDED_TIERS.has(species.tier) || species.tier === '') continue;
+    // Skip NFEs (not fully evolved)
+    if (species.nfe) continue;
+    // Skip forme aliases that aren't real battle formes
+    if (species.battleOnly) continue;
+    ouPool.push(species.name);
 }
 fs.writeFileSync(path.join(__dirname, 'ou_pool.json'), JSON.stringify(ouPool, null, 2));
 console.log(`Wrote ou_pool.json — ${ouPool.length} species`);
