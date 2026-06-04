@@ -335,3 +335,7 @@ By completion, the project should be able to:
 - simulate competitive battles,
 - optimize team compositions automatically,
 - and generate competitive team recommendations based on probabilistic performance estimates.
+
+
+python -m uvicorn api.main:app --port 8001 --reload
+npm run dev
