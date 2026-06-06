@@ -100,6 +100,17 @@ def team_recommend(
     results = recommend(names, n=n, verbose=False)
     return results
 
+@app.get("/team/heatmap")
+def team_heatmap(team: str = Query(...)):
+    from analysis.pokemon_data import get_weaknesses, ALL_TYPES
+    names = [n.strip() for n in team.split(",") if n.strip()]
+    if not names:
+        raise HTTPException(400, "Provide at least 1 Pokémon")
+    return [
+        {"pokemon": name, "weaknesses": get_weaknesses(name)}
+        for name in names
+    ]
+
 
 # ── optimizer ────────────────────────────────────────────────────────────────
 
@@ -133,6 +144,11 @@ def optimizer_best(n: int = Query(5, ge=1, le=20)):
 
 
 # ── pokédex ───────────────────────────────────────────────────────────────────
+
+@app.get("/pokemon/pool")
+def pokemon_pool():
+    with open(DATA_DIR / "ou_pool.json") as f:
+        return json.load(f)
 
 @app.get("/pokemon/{name}")
 def pokemon_lookup(name: str):

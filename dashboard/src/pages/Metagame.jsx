@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { getUsage, getPairs, getTriplets, getTera } from '../api'
+import PokemonName from '../components/PokemonName'
+import PokemonDrawer from '../components/PokemonDrawer'
 
 const TYPE_COLORS = {
   Fire:'#F08030',Water:'#6890F0',Grass:'#78C850',Electric:'#F8D030',
@@ -19,21 +21,13 @@ function Card({ title, children }) {
   )
 }
 
-function TypeBadge({ type }) {
-  return (
-    <span className="px-2 py-0.5 rounded text-xs font-bold text-white"
-      style={{ backgroundColor: TYPE_COLORS[type] || '#666' }}>
-      {type}
-    </span>
-  )
-}
-
 export default function Metagame() {
   const [usage, setUsage] = useState([])
   const [pairs, setPairs] = useState([])
   const [triplets, setTriplets] = useState([])
   const [tera, setTera] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState(null)
 
   useEffect(() => {
     Promise.all([getUsage(20), getPairs(15, 10), getTriplets(10), getTera(12)])
@@ -49,134 +43,138 @@ export default function Metagame() {
   if (loading) return <div className="text-gray-500 py-20 text-center">Loading metagame data...</div>
 
   return (
-    <div className="space-y-6">
-      {/* Usage chart */}
-      <Card title="Pokémon Usage % — Top 20">
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={usage} layout="vertical" margin={{ left: 100, right: 20 }}>
-            <XAxis type="number" domain={[0, 'auto']} tick={{ fill: '#9ca3af', fontSize: 11 }} />
-            <YAxis type="category" dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 12 }} width={100} />
-            <Tooltip
-              contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 8 }}
-              formatter={(v, n) => [
-                n === 'usage_pct' ? `${v}%` : `${v}%`,
-                n === 'usage_pct' ? 'Usage' : 'Win Rate'
-              ]}
-            />
-            <Bar dataKey="usage_pct" fill="#ef4444" radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
+    <>
+      <PokemonDrawer name={selected} onClose={() => setSelected(null)} />
 
-      {/* Usage table with win rates */}
-      <Card title="Usage & Win Rates">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-400 border-b border-gray-800">
-                <th className="text-left py-2 pr-4">#</th>
-                <th className="text-left py-2 pr-4">Pokémon</th>
-                <th className="text-right py-2 pr-4">Usage %</th>
-                <th className="text-right py-2 pr-4">Win Rate %</th>
-                <th className="text-right py-2">Appearances</th>
-              </tr>
-            </thead>
-            <tbody>
-              {usage.map((p, i) => (
-                <tr key={p.name} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                  <td className="py-2 pr-4 text-gray-500">{i + 1}</td>
-                  <td className="py-2 pr-4 font-medium">{p.name}</td>
-                  <td className="py-2 pr-4 text-right text-blue-400">{p.usage_pct}%</td>
-                  <td className="py-2 pr-4 text-right">
-                    <span className={p.win_rate >= 55 ? 'text-green-400' : p.win_rate <= 45 ? 'text-red-400' : 'text-gray-300'}>
-                      {p.win_rate}%
-                    </span>
-                  </td>
-                  <td className="py-2 text-right text-gray-500">{p.appearances}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top pairs */}
-        <Card title="Top Co-occurring Pairs">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-400 border-b border-gray-800">
-                <th className="text-left py-2">Pair</th>
-                <th className="text-right py-2 pr-2">Count</th>
-                <th className="text-right py-2">Win %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pairs.map((p, i) => (
-                <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                  <td className="py-2 text-xs">
-                    <span className="text-gray-200">{p.pokemon_a}</span>
-                    <span className="text-gray-500 mx-1">+</span>
-                    <span className="text-gray-200">{p.pokemon_b}</span>
-                  </td>
-                  <td className="py-2 pr-2 text-right text-gray-400">{p.co_occurrence_count}</td>
-                  <td className="py-2 text-right">
-                    <span className={p.pair_win_rate >= 60 ? 'text-green-400' : p.pair_win_rate <= 45 ? 'text-red-400' : 'text-gray-300'}>
-                      {p.pair_win_rate}%
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-
-        {/* Tera rates */}
-        <Card title="Terastallization Rates — Top 12">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={tera} layout="vertical" margin={{ left: 110, right: 20 }}>
-              <XAxis type="number" domain={[0, 100]} tick={{ fill: '#9ca3af', fontSize: 11 }}
-                tickFormatter={v => `${v}%`} />
-              <YAxis type="category" dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 12 }} width={110} />
+      <div className="space-y-6">
+        <Card title="Pokémon Usage % — Top 20">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={usage} layout="vertical" margin={{ left: 100, right: 20 }}>
+              <XAxis type="number" domain={[0, 'auto']} tick={{ fill: '#9ca3af', fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 12 }} width={100} />
               <Tooltip
                 contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 8 }}
-                formatter={v => [`${v}%`, 'Tera Rate']}
+                formatter={(v, n) => [
+                  `${v}%`,
+                  n === 'usage_pct' ? 'Usage' : 'Win Rate'
+                ]}
               />
-              <Bar dataKey="tera_rate" fill="#a855f7" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="usage_pct" fill="#ef4444" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
-      </div>
 
-      {/* Triplet cores */}
-      {triplets.length > 0 && (
-        <Card title="Top Triplet Cores">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-400 border-b border-gray-800">
-                <th className="text-left py-2">Core</th>
-                <th className="text-right py-2 pr-2">Appearances</th>
-                <th className="text-right py-2">Win %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {triplets.map((t, i) => (
-                <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                  <td className="py-2 text-xs">
-                    {t.pokemon_a} <span className="text-gray-500">+</span> {t.pokemon_b} <span className="text-gray-500">+</span> {t.pokemon_c}
-                  </td>
-                  <td className="py-2 pr-2 text-right text-gray-400">{t.co_occurrence_count}</td>
-                  <td className="py-2 text-right">
-                    <span className={t.pair_win_rate >= 60 ? 'text-green-400' : 'text-gray-300'}>
-                      {t.pair_win_rate}%
-                    </span>
-                  </td>
+        <Card title="Usage & Win Rates">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-800">
+                  <th className="text-left py-2 pr-4">#</th>
+                  <th className="text-left py-2 pr-4">Pokémon</th>
+                  <th className="text-right py-2 pr-4">Usage %</th>
+                  <th className="text-right py-2 pr-4">Win Rate %</th>
+                  <th className="text-right py-2">Appearances</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {usage.map((p, i) => (
+                  <tr key={p.name} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                    <td className="py-2 pr-4 text-gray-500">{i + 1}</td>
+                    <td className="py-2 pr-4 font-medium">
+                      <PokemonName name={p.name} onClick={setSelected} />
+                    </td>
+                    <td className="py-2 pr-4 text-right text-blue-400">{p.usage_pct}%</td>
+                    <td className="py-2 pr-4 text-right">
+                      <span className={p.win_rate >= 55 ? 'text-green-400' : p.win_rate <= 45 ? 'text-red-400' : 'text-gray-300'}>
+                        {p.win_rate}%
+                      </span>
+                    </td>
+                    <td className="py-2 text-right text-gray-500">{p.appearances}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
-      )}
-    </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card title="Top Co-occurring Pairs">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-800">
+                  <th className="text-left py-2">Pair</th>
+                  <th className="text-right py-2 pr-2">Count</th>
+                  <th className="text-right py-2">Win %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pairs.map((p, i) => (
+                  <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                    <td className="py-2 text-xs">
+                      <PokemonName name={p.pokemon_a} onClick={setSelected} />
+                      <span className="text-gray-500 mx-1">+</span>
+                      <PokemonName name={p.pokemon_b} onClick={setSelected} />
+                    </td>
+                    <td className="py-2 pr-2 text-right text-gray-400">{p.co_occurrence_count}</td>
+                    <td className="py-2 text-right">
+                      <span className={p.pair_win_rate >= 60 ? 'text-green-400' : p.pair_win_rate <= 45 ? 'text-red-400' : 'text-gray-300'}>
+                        {p.pair_win_rate}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+
+          <Card title="Terastallization Rates — Top 12">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={tera} layout="vertical" margin={{ left: 110, right: 20 }}>
+                <XAxis type="number" domain={[0, 100]} tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={v => `${v}%`} />
+                <YAxis type="category" dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 12 }} width={110} />
+                <Tooltip
+                  contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 8 }}
+                  formatter={v => [`${v}%`, 'Tera Rate']}
+                />
+                <Bar dataKey="tera_rate" fill="#a855f7" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+
+        {triplets.length > 0 && (
+          <Card title="Top Triplet Cores">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-800">
+                  <th className="text-left py-2">Core</th>
+                  <th className="text-right py-2 pr-2">Appearances</th>
+                  <th className="text-right py-2">Win %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {triplets.map((t, i) => (
+                  <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                    <td className="py-2 text-xs flex items-center flex-wrap gap-1">
+                      <PokemonName name={t.pokemon_a} onClick={setSelected} />
+                      <span className="text-gray-500">+</span>
+                      <PokemonName name={t.pokemon_b} onClick={setSelected} />
+                      <span className="text-gray-500">+</span>
+                      <PokemonName name={t.pokemon_c} onClick={setSelected} />
+                    </td>
+                    <td className="py-2 pr-2 text-right text-gray-400">{t.co_occurrence_count}</td>
+                    <td className="py-2 text-right">
+                      <span className={t.pair_win_rate >= 60 ? 'text-green-400' : 'text-gray-300'}>
+                        {t.pair_win_rate}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
+      </div>
+    </>
   )
 }
